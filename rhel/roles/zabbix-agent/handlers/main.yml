@@ -1,0 +1,6 @@
+---
+  - name: iniciar zabbix-agent
+    service:
+      name: zabbix-agent
+      state: started
+      enabled: yes

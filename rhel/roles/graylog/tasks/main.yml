@@ -1,0 +1,70 @@
+---
+  - rpm_key:
+      state: present
+      key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+      
+  - name: set hostname
+    shell:
+      cmd: hostnamectl set-hostname graylog
+    args:
+      executable: /bin/bash
+      
+  - name: upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+
+  - name: instalar epel-release
+    yum:
+      name: epel-release
+      state: latest
+  
+  - name: instalar de pacotes dependentes
+    yum:
+      name: "{{ package }}"
+    vars:
+      package:
+        - pwgen
+        - vim
+        - java-1.8.0-openjdk-headless.x86_64
+        - https://packages.graylog2.org/repo/packages/graylog-3.2-repository_latest.rpm
+        - nginx
+  
+  - name: adicionar repostórios
+    copy:
+      src: "files/{{ item }}"
+      dest: "/etc/yum.repos.d/{{ item }}"
+    loop:
+      - 'elasticsearch.repo'
+      - 'mongodb-org.repo'
+      
+  - name: update repolist
+    yum:
+      name: '*'
+      state: latest
+
+  - name: instalar mongodb
+    yum:
+      name: mongodb-org
+      state: latest
+    notify:
+        - mongodb
+  
+  - name: instalar elasticsearch
+    yum:
+      name: elasticsearch-oss
+      state: latest
+      
+  - name: copiar arquivo de configuração elasticsearch
+    copy:
+      src: files/elasticsearch.yml
+      dest: /etc/elasticsearch/elasticsearch.yml
+    notify:
+      - elasticsearch
+  
+  - name: install graylog-server
+    yum:
+      name: graylog-server
+      state: latest
+    
+  

@@ -1,0 +1,25 @@
+---
+  - name: upgrade all packages
+    apt:
+      name: '*'
+      state: latest
+        
+  - name: instalar filebeat
+    apt:
+      deb: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.7.0-amd64.deb
+      
+  - name: copiar arquivos de configuração do logstash
+    copy:
+      src: "files/{{ item }}"
+      dest: "/etc/filebeat/modules.d/{{ item }}"
+    loop:
+      - system.yml
+    when:
+      - system_ext == true
+      
+  - name: copiar arquivo de configuração do filebeat
+    template:
+      src: templates/filebeat.yml.j2
+      dest: /etc/filebeat/filebeat.yml
+    notify:
+      - filebeat

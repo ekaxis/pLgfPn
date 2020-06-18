@@ -1,0 +1,62 @@
+---  
+  - name: SELinux - disable (config)
+    selinux:
+      state: disabled
+    register: result
+    failed_when: result.msg | default('ok', True) is not search('(^ok$|libselinux-python|(SELinux state changed))')
+      
+  - name: SELinux - disable (temp)
+    shell: setenforce 0
+  
+  - name: instalar release zabbix noarch
+    yum:
+      name: "{{ zabbix_server[version_zabbix] }}"
+      state: present
+
+  - name: instalar epel-release
+    yum:
+      name: epel-release
+      state: latest
+      
+  - name: upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+      
+  - name: instalação de softwares dependentes
+    yum:
+      name: "{{ softwares }}"
+    vars:
+      softwares:
+        - zabbix-server-mysql
+        - zabbix-web-mysql
+        - mysql 
+        - mariadb-server
+        - httpd
+        - php
+        - python
+        - python-pip
+        - MySQL-python          # para funcionamento de módulos (mysql_db, mysql_user)
+        - unzip                 # para importar arquivos file.sql.gz (unarchive)
+        - vim
+    notify:
+      - iniciar mariadb
+      
+#  - name: criar database "{{ zb_db_name }}" utf8
+#    shell: mysql -u root -e "create database {{ zb_db_name }} character set UTF8 collate utf8_bin"
+
+  - name: criar database "{{ zb_db_name }}"
+      mysql_db:
+        login_user: root
+        name: {{ zb_db_name }}
+        state: present
+  # nota:
+  #   utlizar mysql_db gera erro de codificação utf8 do database 
+  #   'zabbix' ao instalar pela interface web
+      
+  - name: criar usuário 'zabbix'
+    mysql_user:
+      name: "{{ zb_db_name }}"
+      password: "{{ zb_db_password }}"
+      priv: "{{zb_db_name}}.*:ALL"
+      state: present

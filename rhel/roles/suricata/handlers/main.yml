@@ -1,0 +1,6 @@
+---
+  - name: suricata
+    systemd:
+      name: suricata
+      state: restarted
+      enabled: yes

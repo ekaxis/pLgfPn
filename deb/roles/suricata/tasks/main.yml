@@ -1,0 +1,13 @@
+---
+  - apt_repository:
+    repo: ppa:oisf/suricata-stable
+
+  - name: upgrade all packages
+    apt:
+      name: '*'
+      state: latest
+      
+  - name: install suricata
+    apt:
+      name: suricata
+      state: latest

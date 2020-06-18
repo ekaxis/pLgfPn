@@ -1,0 +1,7 @@
+---
+  - name: filebeat
+    service:
+      name: filebeat
+      state: started
+      enabled: yes
+  

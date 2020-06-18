@@ -1,0 +1,217 @@
+---
+  - name: upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+
+  - name: instalar epel-release
+    yum:
+      name: epel-release
+      state: latest
+  
+  - name: instalar de pacotes dependentes
+    yum:
+      name: "{{ package }}"
+      state: latest
+    vars:
+      package:
+        - gcc
+        - gcc-c++
+        - libnetfilter_queue
+        - libnetfilter_queue-devel
+        - git
+        - autoconf
+        - libtool
+        - flex
+        - bison
+        - zlib
+        - zlib-devel
+        - pcre
+        - pcre-devel
+        - libdnet
+        - libdnet-devel
+        - tcpdump
+        - libnghttp2
+        - wget
+        - xz-devel
+        - lzma
+        - perl-libwww-perl
+        - perl-core
+        - perl(Crypt::SSLeay)
+        - perl-LWP-Protocol-https
+        
+  - name: criar diretório para código fonte
+    file:
+      path: ~/snort_src
+      state: directory
+  
+  
+  - name: ethtool off
+    shell:
+      cmd: "{{ item }}"
+    args:
+      executable: /bin/bash
+    loop:
+      - ethtool -K eth0 gro off
+      - ethtool -K eth0 lro off
+      
+  - name: copiar código fonte para máquina remota
+    copy:
+      src: "files/{{ item }}"
+      dest: "~/snort_src/{{ item }}"
+    loop:
+      - daq-2.0.7.tar.gz
+      - snort-2.9.16.tar.gz
+      - libpcap-1.8.1.tar.gz
+      
+      
+  - name: descompactar código fonte
+    unarchive:
+      src: "~/snort_src/{{ item }}"
+      dest: ~/snort_src/
+      remote_src: yes
+    loop:
+      - daq-2.0.7.tar.gz
+      - snort-2.9.16.tar.gz
+      - libpcap-1.8.1.tar.gz
+      
+#  - name: ./configure libpcap
+#    shell:
+#      cmd: ./configure > .configure.log
+#      chdir: ~/snort_src/libpcap-1.8.1/
+#      
+#  - name: make libpcap
+#    make:
+#      chdir: ~/snort_src/libpcap-1.8.1/
+#      
+#  - name: make install libpcap
+#    make:
+#      chdir: ~/snort_src/libpcap-1.8.1/
+#      target: install
+#      
+#  - name: ./configure daq
+#    shell:
+#      cmd: ./configure > .configure.log
+#      chdir: ~/snort_src/daq-2.0.7/
+#      
+#  - name: autoreconf -f -i
+#    shell:
+#      cmd: autoreconf -f -i > ./autoreconf.log
+#      chdir: ~/snort_src/daq-2.0.7/
+#    args:
+#      executable: /bin/bash
+#  
+#  - name: make daq
+#    make:
+#      chdir: ~/snort_src/daq-2.0.7/
+#      
+#  - name: make install daq
+#    make:
+#      chdir: ~/snort_src/daq-2.0.7/
+#      target: install
+#      
+#  - name: export path
+#    shell:
+#      cmd: echo "export PATH=$PATH:/usr/local/bin" >> ~/.bashrc
+#    args:
+#      executable: /bin/bash
+#      
+#  - name: ./configure snort
+#    shell:
+#      cmd: ./configure --enable-sourcefire --enable-control-socket -enable-control-socket --disable-open-appid > ./configure.log
+#      chdir: ~/snort_src/snort-2.9.16/
+      
+#  - name: make snort
+#    make:
+#      chdir: ~/snort_src/snort-2.9.16/
+#      
+#  - name: make install snort
+#    make:
+#      chdir: ~/snort_src/snort-2.9.16/
+#      target: install
+      
+  - name: ldconfig
+    shell: ldconfig
+    args:
+      executable: /bin/bash
+      
+  - name: ln -s snort
+    shell: ln -s /usr/local/bin/snort /usr/sbin/snort
+    ignore_errors: yes
+    args:
+      executable: /bin/bash
+      
+  - name: criar grupo snort
+    group:
+      name: snort
+      state: present
+      
+  - name: criar usuário para o snort
+    user:
+      name: snort
+      shell: /sbin/nologin
+      comment: SNORT_IDS
+      group: snort
+      
+  - name: criar diretórios do snort
+    file:
+      path: "{{ item }}"
+      owner: snort
+      group: snort
+      mode: '5775'
+      state: directory
+    loop:
+      - /etc/snort/rules
+      - /var/log/snort
+      - /usr/local/lib/snort_dynamicrules
+      - /etc/snort/rules/iplists
+      
+  - name: criar rules vazias
+    file:
+      path: "{{ item }}"
+      state: touch
+    loop:
+      - /etc/snort/rules/white_list.rules
+      - /etc/snort/rules/black_list.rules
+      - /etc/snort/rules/so_rules.rules
+      - /etc/snort/rules/snort.rules
+      - /etc/snort/rules/local.rules
+      - /var/log/snort/snort_alert
+      - /etc/snort/rules/iplists/default.blacklist
+  
+  - name: clone repo
+    git:
+      repo: https://github.com/shirkdog/pulledpork.git
+      dest: ~/pulledpork
+      clone: yes
+    
+  - name: copiar pulledpork.pl para /bin
+    copy:
+      src: ~/pulledpork/pulledpork.pl
+      dest: /usr/local/bin/pulledpork.pl
+      mode: '0755'
+    
+  - name: copiar arquivos de configuração
+    copy:
+      src: "~/pulledpork/etc/{{ item }}"
+      dest: "/etc/snort/{{ item }}"
+      remote_src: yes  
+    loop:
+      - disablesid.conf
+      - dropsid.conf
+      - enablesid.conf
+      - modifysid.conf
+      - pulledpork.conf
+      
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  

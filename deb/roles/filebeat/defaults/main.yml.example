@@ -1,0 +1,4 @@
+---
+logstash_host: 
+logstash_port: 5044
+system_ext: false

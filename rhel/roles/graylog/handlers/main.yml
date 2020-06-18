@@ -1,0 +1,12 @@
+---
+  - name: mongodb
+    systemd:
+      state: started
+      name: mongod
+      enabled: yes
+      
+  - name: elasticsearch
+    systemd:
+      state: started
+      name: elasticsearch
+      enabled: yes

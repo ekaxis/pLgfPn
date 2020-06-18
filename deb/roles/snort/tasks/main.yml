@@ -1,0 +1,193 @@
+---
+  - name: atualizar todos os pacotes
+    apt:
+      name: '*'
+      state: latest
+      
+  - name: instalação de dependencias
+    apt:
+      name: "{{ package }}"
+      state: latest
+      update_cache: yes
+    vars:
+      package:
+        - gcc
+        - make
+        - libpcre3-dev
+        - zlib1g-dev
+        - libpcap-dev
+        - openssl
+        - libssl-dev
+        - libnghttp2-dev
+        - libdumbnet-dev
+        - bison
+        - flex
+        - automake
+        - libtool
+        - m4
+        - perl
+        - libwww-perl
+  
+  - name: criar diretório para código fonte
+    file:
+      path: ~/snort_src
+      state: directory
+
+  - name: copiar código fonte para máquina remota
+    copy:
+      src: "{{ item.src }}"
+      dest: "~/snort_src/{{ item.dst }}"
+    loop:
+      - { src: 'files/daq-2.0.7.tar.gz', dst: 'daq-2.0.7.tar.gz' }
+      - { src: 'files/snort-2.9.16.tar.gz', dst: 'snort-2.9.16.tar.gz' }
+  
+  - name: descompactar código fonte
+    unarchive:
+      src: "~/snort_src/{{ item }}"
+      dest: ~/snort_src/
+      remote_src: yes
+    loop:
+      - daq-2.0.7.tar.gz
+      - snort-2.9.16.tar.gz
+      
+  - name: ./configure daq
+    shell:
+      cmd: ./configure > .configure.log
+      chdir: ~/snort_src/daq-2.0.7/
+      
+  - name: autoreconf -f -i
+    shell:
+      cmd: autoreconf -f -i > ./autoreconf.log
+      chdir: ~/snort_src/daq-2.0.7/
+    args:
+      executable: /bin/bash
+  
+  - name: make daq
+    make:
+      chdir: ~/snort_src/daq-2.0.7/
+      
+  - name: make install daq
+    make:
+      chdir: ~/snort_src/daq-2.0.7/
+      target: install
+      
+  - name: ./configure snort
+    shell:
+      cmd: ./configure --enable-sourcefire --enable-control-socket -enable-control-socket --disable-open-appid > ./configure.log
+      chdir: ~/snort_src/snort-2.9.16/
+      
+  - name: make snort
+    make:
+      chdir: ~/snort_src/snort-2.9.16/
+      
+  - name: make install snort
+    make:
+      chdir: ~/snort_src/snort-2.9.16/
+      target: install
+      
+  - name: ldconfig
+    shell: ldconfig
+    args:
+      executable: /bin/bash
+      
+  - name: ln -s snort
+    shell: ln -s /usr/local/bin/snort /usr/sbin/snort
+    ignore_errors: yes
+    args:
+      executable: /bin/bash
+      
+  - name: criar grupo snort
+    group:
+      name: snort
+      state: present
+      
+  - name: criar usuário para o snort
+    user:
+      name: snort
+      shell: /sbin/nologin
+      comment: SNORT_IDS
+      group: snort
+      
+  - name: criar diretórios do snort
+    file:
+      path: "{{ item }}"
+      owner: snort
+      group: snort
+      mode: '5775'
+      state: directory
+    loop:
+      - /etc/snort/rules
+      - /var/log/snort
+      - /usr/local/lib/snort_dynamicrules
+      
+  - name: criar rules vazias
+    file:
+      path: "{{ item }}"
+      state: touch
+    loop:
+      - /etc/snort/rules/white_list.rules
+      - /etc/snort/rules/black_list.rules
+      - /etc/snort/rules/local.rules
+      - /var/log/snort/snort_alert
+      
+  - name: copiar arquivos de configuração
+    copy:
+      src: "~/snort_src/snort-2.9.16/etc/{{ item }}"
+      dest: "/etc/snort/{{ item }}"
+      remote_src: yes  
+    loop:
+      - classification.config
+      - file_magic.conf
+      - gen-msg.map
+      - reference.config
+      - threshold.conf
+      - unicode.map
+
+  - name: copiar snort.conf para máquina remota
+    template:
+      src: templates/snort.conf.j2
+      dest: /etc/snort/snort.conf
+
+  - name: baixar rules community
+    get_url:
+      url: https://www.snort.org/rules/community
+      dest: ~/community.tar.gz
+      
+  - name: baixar regras do snort
+    get_url:
+      url: "https://www.snort.org/rules/snortrules-snapshot-29130.tar.gz?oinkcode={{ oinkcode }}"
+      dest: ~/registered.tar.gz
+      
+  - name: descompactar regras
+    unarchive:
+      src: "{{ item.src }}"
+      dest: "{{ item.dst }}"
+      remote_src: yes
+    loop:
+      - { src: '~/community.tar.gz', dst: '~/' }
+#      - { src: '~/registered.tar.gz', dst: '/etc/snort' }
+      
+  - name: copiar community rules para /etc/snort/rules
+    copy:
+      src: ~/community-rules/community.rules
+      dest: /etc/snort/rules/community.rules
+      remote_src: yes
+      
+  - name: copiar sid-msg.map para /etc/snort/
+    copy:
+      src: ~/community-rules/sid-msg.map
+      dest: /etc/snort/sid-msg.map
+      remote_src: yes
+      
+  - name: validar arquivo de configuração
+    shell:
+      cmd: snort -T -c /etc/snort/snort.conf
+    args:
+      executable: /bin/bash
+      
+  - name: copiar snort.service para systemd
+    copy:
+      src: files/snort.service
+      dest: /lib/systemd/system/snort.service
+    notify:
+      - start snort

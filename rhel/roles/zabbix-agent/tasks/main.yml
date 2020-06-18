@@ -1,0 +1,37 @@
+---
+  - name: upgrade all packages
+    yum:
+      name: '*'
+      update_cache: yes
+      state: latest
+      security: yes
+      
+  - name: SELinux - disable (config)
+    selinux:
+      state: disabled
+    register: result
+    failed_when: result.msg | default('ok', True) is not search('(^ok$|libselinux-python|(SELinux state changed))')
+      
+  - name: SELinux - disable (temp)
+    shell: setenforce 0
+    when: ansible_facts['os_family'] == 'CentOS'
+      
+  - name: instalar zabbix-agent
+    yum:
+      name: "{{ zabbix_agent[version_zabbix] }}"
+      state: present
+  
+  - name: copiar arquivo de configuração zabbix_agentd.conf
+    template:
+      src: 'templates/zabbix_agentd.conf.j2'
+      dest: '/etc/zabbix/zabbix_agentd.conf'
+    notify:
+      - iniciar zabbix-agent
+      
+  - name: copiar script de cadastro do agent
+    copy:
+      src: 'files/zabbix-agent.py'
+      dest: '~/zabbix-agent.py'
+
+  - name: cadastrar agent do zabbix (script)
+    shell: python ~/zabbix-agent.py {{ ansible_hostname }} {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}

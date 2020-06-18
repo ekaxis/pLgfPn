@@ -1,0 +1,32 @@
+---
+  - name: upgrade all packages
+    apt:
+      name: '*'
+      state: latest
+      
+  - name: instalação de dependencias
+    apt:
+      name: "{{ softwares }}"
+    vars:
+      softwares:
+        - python
+
+  - name: instalar zabbix-agent
+    apt:
+      name: zabbix-agent
+      state: latest
+  
+  - name: copiar arquivo de configuração zabbix_agentd.conf
+    template:
+      src: 'templates/zabbix_agentd.conf.j2'
+      dest: '/etc/zabbix/zabbix_agentd.conf'
+    notify:
+      - iniciar zabbix-agent
+      
+  - name: copiar script de cadastro do agent
+    copy:
+      src: 'files/zabbix-agent.py'
+      dest: '~/zabbix-agent.py'
+
+  - name: cadastrar agent do zabbix (script)
+    shell: python ~/zabbix-agent.py {{ ansible_hostname }} {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}

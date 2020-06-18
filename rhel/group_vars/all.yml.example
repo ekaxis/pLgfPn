@@ -1,0 +1,35 @@
+---
+# snort - roles
+oinkcode: 
+ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+# ------------------------------------------------------------------------------------------
+
+# zabbix - roles
+distribution: "{{ ansible_facts['distribution'] }}"
+distribution_major_version: "{{ ansible_facts['distribution_major_version'] }}"
+version_zabbix: "{{distribution}}-{{distribution_major_version}}"
+
+zabbix_server_dns: 
+zabbix_server_ip: 
+
+zb_db_name: zabbix
+zb_db_password: zabbix
+
+zabbix_agent:
+  OracleLinux-7: https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-agent-4.4.0-1.el7.x86_64.rpm
+  OracleLinux-6: https://repo.zabbix.com/zabbix/4.4/rhel/6/x86_64/zabbix-agent-4.4.0-1.el6.x86_64.rpm
+  CentOS-7: https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-agent-4.4.0-1.el7.x86_64.rpm
+  CentOS-6: https://repo.zabbix.com/zabbix/4.4/rhel/6/x86_64/zabbix-agent-4.4.0-1.el6.x86_64.rpm
+  
+zabbix_server:
+  OracleLinux-7: https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.rpm
+  OracleLinux-6: https://repo.zabbix.com/zabbix/4.4/rhel/6/x86_64/zabbix-release-4.4-1.el6.noarch.rpm
+  CentOS-7: https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.rpm
+  CentOS-6: https://repo.zabbix.com/zabbix/4.4/rhel/6/x86_64/zabbix-release-4.4-1.el6.noarch.rpm
+# ------------------------------------------------------------------------------------------
+# elk - roles
+path_log_elsearch: /var/log/elasticsearch
+path_data_elsearch: /var/lib/elasticsearch
+path_log_logstash: /var/log/logstash
+path_data_logstash: /var/lib/logstash
+# ------------------------------------------------------------------------------------------

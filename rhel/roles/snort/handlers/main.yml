@@ -1,0 +1,6 @@
+---
+  - name: start snort
+    systemd:
+      state: started
+      daemon_reload: yes
+      name: snort

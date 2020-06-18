@@ -1,0 +1,114 @@
+---
+  - rpm_key:
+      state: present
+      key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+      
+  - name: upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+
+  - name: instalar epel-release
+    yum:
+      name: epel-release
+      state: latest
+    when:
+      - ansible_facts['distribution'] == "CentOS"
+      
+  - name: adicionar repostórios do elk
+    copy:
+      src: "files/{{ item }}"
+      dest: "/etc/yum.repos.d/{{ item }}"
+    loop:
+      - elasticsearch.repo
+      - kibana.repo
+      
+  - name: upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+      
+  - name: instalar java, elasticseach, kibana, logstash, filebeat, nginx
+    yum:
+      name: "{{ item }}"
+      state: latest
+    loop:
+      - java-1.8.0-openjdk-headless.x86_64
+      - elasticsearch
+      - kibana
+      - nginx
+      - logstash
+      - filebeat
+      
+  - name: copiar arquivos de configurações
+    template:
+      src: "templates/{{ item.src }}"
+      dest: "{{ item.dst }}"
+    loop:
+      - { src: 'elasticsearch.yml.j2', dst: '/etc/elasticsearch/elasticsearch.yml' }
+      - { src: 'nginx.conf.j2', dst: '/etc/nginx/nginx.conf' }
+      - { src: 'logstash.yml.j2', dst: '/etc/logstash/logstash.yml' }
+      
+  - name: start elasticsearch
+    systemd:
+      name: elasticsearch
+      state: started
+      enabled: yes
+  
+  - name: start kibana
+    systemd:
+      name: kibana
+      state: restarted
+      daemon_reload: yes
+      enabled: yes
+      
+  - name: start nginx
+    systemd:
+      name: nginx
+      state: started
+      daemon_reload: yes
+      enabled: yes
+      
+  - name: criar htpasswd.users
+    copy:
+      src: files/htpasswd.users
+      dest: /etc/nginx/htpasswd.users
+      mode: '0644'
+      
+  - name: copiar arquivos de configuração do logstash
+    copy:
+      src: "files/{{ item }}"
+      dest: "/etc/logstash/conf.d/{{ item }}"
+    loop:
+      - 10-syslog-filter.conf
+      - 02-beats-input.conf
+      - 30-elasticsearch-output.conf
+  
+  - name: /etc/logstash -t
+    shell:
+      cmd: sudo -u logstash /usr/share/logstash/bin/logstash --path.settings /etc/logstash -t
+    args:
+      executable: /bin/bash
+  
+  - name: start logstash
+    systemd:
+      name: logstash
+      state: started
+      enabled: yes
+      
+  - name: configure filebeats
+    copy:
+      src: files/filebeat.yml
+      dest: /etc/filebeat/filebeat.yml
+  
+  - name: configure filebeat modules enable system
+    shell:
+      cmd: "{{ item }}"
+    args:
+      executable: /bin/bash
+    loop:
+      - filebeat modules enable system
+      - filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["localhost:9200"]'
+      - filebeat setup -e -E output.logstash.enabled=false -E output.elasticsearch.hosts=['localhost:9200'] -E setup.kibana.host=localhost:5601
+    notify:
+      - start filebeat

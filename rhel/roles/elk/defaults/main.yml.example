@@ -1,0 +1,5 @@
+---
+cluster_name: elasticsearch-master
+node_name: node-1
+
+logstash_node_name: node-master

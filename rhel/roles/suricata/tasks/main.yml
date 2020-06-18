@@ -1,0 +1,35 @@
+---
+  - name: upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+
+  - name: instalar epel-release
+    yum:
+      name: epel-release
+      state: latest
+    when: ansible_facts['distribution'] == 'CentOS'
+    
+  - name: instalar suricata
+    yum:
+      name: suricata
+      state: latest
+      
+  - name: copiar sysconfig/suricata
+    copy:
+      src: files/suricata
+      dest: /etc/sysconfig/suricata
+    when: ansible_facts['distribution'] == 'OracleLinux'
+
+#- name: copiar arquivo de configuração
+#    template:
+#      src: templates/suricata.yaml.j2
+#      dest: /etc/suricata/suricata.yaml
+  
+  - name: load rules suricata
+    shell:
+      cmd: suricata-update
+    args:
+      executable: /bin/bash
+    notify:
+      - suricata
