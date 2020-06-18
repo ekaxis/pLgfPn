@@ -1,6 +1,6 @@
 # pLgfPn
 
-Scripts para provisionamento, gerenciamento de configurações e implantação de aplicativos.
+Scripts em Ansible para provisionamento, gerenciamento de configurações e implantação de aplicativos.
 
 Os scripts foram feitos de modo a facilitar
 futuras atualizações, adaptar para o seu cenário e evitar possíveis erros.
